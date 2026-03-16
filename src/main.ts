@@ -12,7 +12,8 @@ import { shouldCompress, compressImage, fileToUint8Array } from './compress.ts';
 import { saveChunk, getProgress, isComplete, assembleFile, clearGroup, cleanOldChunks } from './chunk-store.ts';
 
 const app = () => document.getElementById('app')!;
-const MAX_MESSAGE_BYTES = 24_000;
+// Max text message size. Produces URLs ~60K chars — within Firefox's ~65K limit.
+const MAX_MESSAGE_BYTES = 44_000;
 const CREDENTIAL_KEY = 'bh_credential_id';
 
 let pendingFile: { data: Uint8Array; mimeType: string; name: string; originalSize: number; compressedSize: number } | null = null;

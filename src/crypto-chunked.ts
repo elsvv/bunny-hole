@@ -6,7 +6,8 @@ import {
 } from './crypto-passkey.ts';
 import { deriveKey, ecdhDeriveAesKey, ECDH_PARAMS } from './crypto-shared.ts';
 
-export const CHUNK_DATA_SIZE = 22_000;
+// Max raw data per chunk. Produces URLs ~58,800 chars — within Firefox's ~65K limit.
+export const CHUNK_DATA_SIZE = 44_000;
 
 export interface ChunkMeta {
   groupId: Uint8Array;   // 16 bytes

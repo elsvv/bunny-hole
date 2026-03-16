@@ -211,7 +211,9 @@ describe('chunked password encryption', () => {
   });
 
   it('group_id same across all encrypted chunks', async () => {
-    const data = crypto.getRandomValues(new Uint8Array(CHUNK_DATA_SIZE * 2 + 100));
+    // Use non-random data to avoid crypto.getRandomValues 65536-byte limit
+    const data = new Uint8Array(CHUNK_DATA_SIZE * 2 + 100);
+    for (let i = 0; i < data.length; i++) data[i] = i & 0xff;
     const fragments = await encryptChunksPassword(data, 'image/png', 'pass');
 
     const chunks = await Promise.all(fragments.map(f => decryptChunkPassword(f, 'pass')));
@@ -298,7 +300,9 @@ describe('chunked passkey encryption', () => {
     const kp = await deriveKeyPairFromSecret(secret);
     const pub = await importPublicKey(await exportPublicKey(kp.publicKey));
 
-    const data = crypto.getRandomValues(new Uint8Array(CHUNK_DATA_SIZE * 2 + 100));
+    // Use non-random data to avoid crypto.getRandomValues 65536-byte limit
+    const data = new Uint8Array(CHUNK_DATA_SIZE * 2 + 100);
+    for (let i = 0; i < data.length; i++) data[i] = i & 0xff;
     const fragments = await encryptChunksPasskey(data, 'image/png', pub);
 
     const chunks = await Promise.all(fragments.map(f => decryptChunkPasskey(f, secret)));

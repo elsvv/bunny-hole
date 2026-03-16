@@ -27,6 +27,8 @@ const MODE_LAYOUT: Record<number, number[]> = {
   0x01: [16, 12], // salt, iv — rest is ciphertext
   0x02: [65, 12], // ephemeral_pubkey, iv — rest is ciphertext
   0x03: [65],     // pubkey — rest is label
+  0x04: [16, 12], // salt, iv — rest is ciphertext (chunked password)
+  0x05: [65, 12], // ephemeral_pubkey, iv — rest is ciphertext (chunked passkey)
 };
 
 export function encodePayload(mode: number, ...parts: Uint8Array[]): string {

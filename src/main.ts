@@ -8,7 +8,7 @@ import { getContacts, addContact, removeContact, renameContact } from './contact
 import { toBase64url, fromBase64url, encodePayload } from './encoding.ts';
 import { renderQR } from './qr.ts';
 import { encryptChunksPassword, encryptChunksPasskey, decryptChunkPassword, decryptChunkPasskey, CHUNK_DATA_SIZE } from './crypto-chunked.ts';
-import { shouldCompress, compressImage, fileToUint8Array } from './compress.ts';
+import { shouldCompress, compressImage, fileToUint8Array, type ImageQuality } from './compress.ts';
 import { saveChunk, getProgress, isComplete, assembleFile, clearGroup, cleanOldChunks } from './chunk-store.ts';
 
 const app = () => document.getElementById('app')!;
@@ -54,6 +54,11 @@ function renderCompose(): void {
     <hr>
     <div class="row">
       <input type="file" id="file-input">
+      <select id="img-quality" class="hidden">
+        <option value="high">Quality: High</option>
+        <option value="medium">Quality: Medium</option>
+        <option value="low">Quality: Low</option>
+      </select>
       <button id="clear-file" class="hidden">Clear</button>
     </div>
     <div id="file-info" class="hidden"></div>
@@ -95,12 +100,15 @@ function renderCompose(): void {
   // File attachment
   const fileInput = document.getElementById('file-input') as HTMLInputElement;
   fileInput.addEventListener('change', handleFileSelect);
+  const qualitySelect = document.getElementById('img-quality') as HTMLSelectElement;
+  qualitySelect.addEventListener('change', handleFileSelect);
   $('#clear-file').addEventListener('click', () => {
     fileInput.value = '';
     pendingFile = null;
     $('#file-info').classList.add('hidden');
     $('#file-info').innerHTML = '';
     $('#clear-file').classList.add('hidden');
+    qualitySelect.classList.add('hidden');
     msgEl.classList.remove('hidden');
     ($('#charcount')).parentElement!.classList.remove('hidden');
   });
@@ -149,13 +157,22 @@ async function handleFileSelect(): Promise<void> {
   ($('#charcount')).parentElement!.classList.add('hidden');
   $('#clear-file').classList.remove('hidden');
 
+  const qualitySel = document.getElementById('img-quality') as HTMLSelectElement;
+  const isImage = shouldCompress(file);
+  if (isImage) {
+    qualitySel.classList.remove('hidden');
+  } else {
+    qualitySel.classList.add('hidden');
+  }
+
   const infoDiv = $('#file-info');
   infoDiv.classList.remove('hidden');
   infoDiv.innerHTML = '<p>Processing file...</p>';
 
   try {
-    if (shouldCompress(file)) {
-      const result = await compressImage(file);
+    if (isImage) {
+      const quality = qualitySel.value as ImageQuality;
+      const result = await compressImage(file, quality);
       pendingFile = {
         data: result.data,
         mimeType: result.mimeType,

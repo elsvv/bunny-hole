@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bunny Hole</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:1rem}
+h1{margin-bottom:.25rem}
+p.sub{color:#666;margin-bottom:1rem}
+textarea,input[type=text],input[type=password]{width:100%;padding:.5rem;font:inherit;border:1px solid #ccc}
+textarea{height:8rem;resize:vertical}
+button{padding:.5rem 1rem;font:inherit;cursor:pointer}
+hr{margin:1rem 0;border:none;border-top:1px solid #ccc}
+pre.msg{white-space:pre-wrap;word-break:break-all;background:#f5f5f5;padding:1rem;border:1px solid #ccc}
+.err{color:red}
+.warn{color:#856404;background:#fff3cd;padding:.5rem;border:1px solid #ffeeba}
+.row{display:flex;gap:.5rem;align-items:center;margin:.25rem 0}
+.row input{flex:1}
+.hidden{display:none}
+label{cursor:pointer}
+.contact{display:flex;justify-content:space-between;align-items:center;padding:.25rem 0}
+.contact code{font-size:.85em;color:#666}
+#result-url{width:100%;font-family:monospace;font-size:.85em}
+canvas{margin-top:.5rem}
+</style>
+</head>
+<body>
+<h1>Bunny Hole</h1>
+<p class="sub">Encrypted messages via URL. No server. No tracking.</p>
+<div id="app"></div>
+<script src="dist/app.js"></script>
+</body>
+</html>

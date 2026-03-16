@@ -1,7 +1,6 @@
 // src/crypto-passkey.ts
 import { encodePayload, decodePayload } from './encoding.ts';
-
-const ECDH_PARAMS = { name: 'ECDH', namedCurve: 'P-256' } as const;
+import { ECDH_PARAMS, ecdhDeriveAesKey } from './crypto-shared.ts';
 
 export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<CryptoKeyPair> {
   const hkdfKey = await crypto.subtle.importKey('raw', secret as BufferSource, 'HKDF', false, ['deriveBits']);
@@ -52,22 +51,6 @@ export async function exportPublicKey(key: CryptoKey): Promise<Uint8Array> {
 
 export async function importPublicKey(raw: Uint8Array): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', raw as BufferSource, ECDH_PARAMS, true, []);
-}
-
-async function ecdhDeriveAesKey(privateKey: CryptoKey, publicKey: CryptoKey): Promise<CryptoKey> {
-  const sharedBits = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: publicKey },
-    privateKey,
-    256
-  );
-  const hkdfKey = await crypto.subtle.importKey('raw', sharedBits, 'HKDF', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: new TextEncoder().encode('bunny-hole-msg') },
-    hkdfKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
 }
 
 export async function encryptForRecipient(message: string, recipientPublicKey: CryptoKey): Promise<string> {

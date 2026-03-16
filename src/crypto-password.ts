@@ -1,24 +1,6 @@
 // src/crypto-password.ts
 import { encodePayload, decodePayload } from './encoding.ts';
-
-const ITERATIONS = 310_000;
-
-async function deriveKey(password: string, salt: BufferSource): Promise<CryptoKey> {
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
+import { deriveKey } from './crypto-shared.ts';
 
 export async function encryptPassword(message: string, password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));

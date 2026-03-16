@@ -4,11 +4,9 @@ import {
   deriveKeyPairFromSecret,
   importPublicKey,
 } from './crypto-passkey.ts';
+import { deriveKey, ecdhDeriveAesKey, ECDH_PARAMS } from './crypto-shared.ts';
 
-const ITERATIONS = 310_000;
 export const CHUNK_DATA_SIZE = 22_000;
-
-const ECDH_PARAMS = { name: 'ECDH', namedCurve: 'P-256' } as const;
 
 export interface ChunkMeta {
   groupId: Uint8Array;   // 16 bytes
@@ -49,6 +47,10 @@ export function decodeChunkPlaintext(plaintext: Uint8Array): ChunkMeta {
   const groupId = plaintext.slice(offset, offset + 16); offset += 16;
   const chunkIndex = view.getUint16(offset); offset += 2;
   const totalChunks = view.getUint16(offset); offset += 2;
+
+  if (totalChunks === 0) throw new Error('Invalid chunk: totalChunks must be > 0');
+  if (chunkIndex >= totalChunks) throw new Error('Invalid chunk: chunkIndex >= totalChunks');
+
   const mimeLen = plaintext[offset]; offset += 1;
   const mimeType = new TextDecoder().decode(plaintext.slice(offset, offset + mimeLen)); offset += mimeLen;
   const data = plaintext.slice(offset);
@@ -78,47 +80,6 @@ export function splitIntoChunks(fileData: Uint8Array, mimeType: string): ChunkMe
   }
 
   return chunks;
-}
-
-// ---------------------------------------------------------------------------
-// Password-mode helpers (shared with crypto-password.ts logic)
-// ---------------------------------------------------------------------------
-
-async function deriveKey(password: string, salt: BufferSource): Promise<CryptoKey> {
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Passkey-mode helpers (shared with crypto-passkey.ts logic)
-// ---------------------------------------------------------------------------
-
-async function ecdhDeriveAesKey(privateKey: CryptoKey, publicKey: CryptoKey): Promise<CryptoKey> {
-  const sharedBits = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: publicKey },
-    privateKey,
-    256
-  );
-  const hkdfKey = await crypto.subtle.importKey('raw', sharedBits, 'HKDF', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: new TextEncoder().encode('bunny-hole-msg') },
-    hkdfKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
 }
 
 // ---------------------------------------------------------------------------

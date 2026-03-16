@@ -102,6 +102,11 @@ export async function assembleFile(groupId: string): Promise<{ blob: Blob; mimeT
   const total = chunks[0].totalChunks;
   if (chunks.length < total) return null;
 
+  const expectedTotal = chunks[0].totalChunks;
+  if (chunks.some(c => c.totalChunks !== expectedTotal)) {
+    throw new Error('Chunk totalChunks mismatch — possible corruption');
+  }
+
   chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
 
   let totalLen = 0;

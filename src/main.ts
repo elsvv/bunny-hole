@@ -277,6 +277,7 @@ async function handleEncryptFile(): Promise<void> {
       navigator.clipboard.writeText(linksArea.value);
       ($('#copy-all') as HTMLButtonElement).textContent = 'Copied!';
     });
+    pendingFile = null;
   } catch (e: any) {
     showResult(`<p class="err">${escapeHtml(e.message)}</p>`);
   }
@@ -608,6 +609,9 @@ function attachFileReadyHandlers(groupId: string, blob: Blob, mimeType: string):
   if (previewBtn) {
     previewBtn.addEventListener('click', () => {
       const area = $('#preview-area');
+      // Revoke any previous object URL
+      const existing = area.querySelector('[src]') as HTMLMediaElement | HTMLImageElement | null;
+      if (existing) URL.revokeObjectURL(existing.src);
       const url = URL.createObjectURL(blob);
       if (mimeType.startsWith('image/')) {
         area.innerHTML = `<img src="${url}" style="max-width:100%">`;
@@ -658,4 +662,4 @@ function renderAddContact(pubkey: string, label: string): void {
 
 window.addEventListener('hashchange', render);
 render();
-cleanOldChunks();
+cleanOldChunks().catch(() => {});

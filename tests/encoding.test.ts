@@ -49,6 +49,14 @@ describe('payload encoding', () => {
     assert.deepStrictEqual(decoded.parts[2], ciphertext);
   });
 
+  it('throws on unknown mode', () => {
+    assert.throws(() => decodePayload(toBase64url(new Uint8Array([0xff]))), /Unknown mode/);
+  });
+
+  it('throws on truncated payload', () => {
+    assert.throws(() => decodePayload(toBase64url(new Uint8Array([0x01, 0, 0]))), /Truncated/);
+  });
+
   it('encodes and decodes key share mode (0x03)', () => {
     const pubkey = crypto.getRandomValues(new Uint8Array(65));
     const label = new TextEncoder().encode('Alice');

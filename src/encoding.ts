@@ -48,6 +48,9 @@ export function decodePayload(encoded: string): { mode: number; parts: Uint8Arra
   const layout = MODE_LAYOUT[mode];
   if (!layout) throw new Error(`Unknown mode: 0x${mode.toString(16)}`);
 
+  const minLen = 1 + layout.reduce((a, b) => a + b, 0);
+  if (buf.length < minLen) throw new Error(`Truncated payload for mode 0x${mode.toString(16)}`);
+
   const parts: Uint8Array[] = [];
   let offset = 1;
   for (const size of layout) {

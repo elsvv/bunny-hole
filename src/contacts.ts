@@ -27,6 +27,15 @@ export function addContact(label: string, pubkey: string): void {
   saveContacts(contacts);
 }
 
+export function renameContact(pubkey: string, newLabel: string): void {
+  const contacts = getContacts();
+  const contact = contacts.find(c => c.pubkey === pubkey);
+  if (contact) {
+    contact.label = newLabel;
+    saveContacts(contacts);
+  }
+}
+
 export function removeContact(pubkey: string): void {
   const contacts = getContacts().filter(c => c.pubkey !== pubkey);
   saveContacts(contacts);

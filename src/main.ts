@@ -4,7 +4,7 @@ import { resolveView } from './ui.ts';
 import { encryptPassword, decryptPassword } from './crypto-password.ts';
 import { encryptForRecipient, decryptAsRecipient, deriveKeyPairFromSecret, exportPublicKey, importPublicKey } from './crypto-passkey.ts';
 import { registerPasskey, getPrfSecret } from './webauthn.ts';
-import { getContacts, addContact, removeContact } from './contacts.ts';
+import { getContacts, addContact, removeContact, renameContact } from './contacts.ts';
 import { toBase64url, fromBase64url, encodePayload } from './encoding.ts';
 import { renderQR } from './qr.ts';
 
@@ -245,11 +245,24 @@ function renderContactsList(contacts: ReturnType<typeof getContacts>): void {
   }
   section.innerHTML = contacts.map(c => `
     <div class="contact">
-      <span>${escapeHtml(c.label)}</span>
+      <span class="contact-label">${escapeHtml(c.label)}</span>
       <code>${c.pubkey.slice(0, 8)}...</code>
+      <button class="rename-contact" data-key="${escapeHtml(c.pubkey)}" data-label="${escapeHtml(c.label)}">edit</button>
       <button class="del-contact" data-key="${escapeHtml(c.pubkey)}">x</button>
     </div>
   `).join('');
+  section.querySelectorAll('.rename-contact').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = btn as HTMLElement;
+      const pubkey = el.dataset.key!;
+      const oldLabel = el.dataset.label!;
+      const newLabel = prompt('Rename contact:', oldLabel);
+      if (newLabel && newLabel.trim() && newLabel.trim() !== oldLabel) {
+        renameContact(pubkey, newLabel.trim());
+        render();
+      }
+    });
+  });
   section.querySelectorAll('.del-contact').forEach(btn =>
     btn.addEventListener('click', () => {
       removeContact((btn as HTMLElement).dataset.key!);
@@ -339,7 +352,10 @@ function renderDecryptPasskey(fragment: string): void {
 function renderAddContact(pubkey: string, label: string): void {
   app().innerHTML = `
     <p>Someone shared their public key with you.</p>
-    <p><b>Label:</b> ${escapeHtml(label)}</p>
+    <div class="row">
+      <b>Label:</b>
+      <input type="text" id="contact-label" value="${escapeHtml(label)}" placeholder="Contact name">
+    </div>
     <p><b>Key:</b> <code>${pubkey.slice(0, 16)}...${pubkey.slice(-8)}</code></p>
     <button id="add-btn">Add to contacts</button>
     <button id="back-btn">Back</button>
@@ -347,8 +363,9 @@ function renderAddContact(pubkey: string, label: string): void {
   `;
 
   $('#add-btn').addEventListener('click', () => {
+    const finalLabel = (document.getElementById('contact-label') as HTMLInputElement).value.trim() || label;
     try {
-      addContact(label, pubkey);
+      addContact(finalLabel, pubkey);
       $('#add-result').innerHTML = '<p>Contact added!</p>';
     } catch (e: any) {
       $('#add-result').innerHTML = `<p class="err">${escapeHtml(e.message)}</p>`;

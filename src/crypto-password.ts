@@ -3,7 +3,7 @@ import { encodePayload, decodePayload } from './encoding.ts';
 
 const ITERATIONS = 310_000;
 
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(password: string, salt: BufferSource): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -34,7 +34,7 @@ export async function decryptPassword(fragment: string, password: string): Promi
   const { mode, parts } = decodePayload(fragment);
   if (mode !== 0x01) throw new Error('Not a password-mode payload');
   const [salt, iv, ciphertext] = parts;
-  const key = await deriveKey(password, salt);
-  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  const key = await deriveKey(password, salt as BufferSource);
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ciphertext as BufferSource);
   return new TextDecoder().decode(plaintext);
 }

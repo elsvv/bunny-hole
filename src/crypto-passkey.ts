@@ -4,7 +4,7 @@ import { encodePayload, decodePayload } from './encoding.ts';
 const ECDH_PARAMS = { name: 'ECDH', namedCurve: 'P-256' } as const;
 
 export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<CryptoKeyPair> {
-  const hkdfKey = await crypto.subtle.importKey('raw', secret, 'HKDF', false, ['deriveBits']);
+  const hkdfKey = await crypto.subtle.importKey('raw', secret as BufferSource, 'HKDF', false, ['deriveBits']);
   const derived = new Uint8Array(
     await crypto.subtle.deriveBits(
       { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: new TextEncoder().encode('bunny-hole-ecdh-private') },
@@ -14,7 +14,7 @@ export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<Crypt
   );
 
   const pkcs8 = buildP256Pkcs8(derived);
-  const privateKey = await crypto.subtle.importKey('pkcs8', pkcs8, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
+  const privateKey = await crypto.subtle.importKey('pkcs8', pkcs8 as BufferSource, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
 
   const jwk = await crypto.subtle.exportKey('jwk', privateKey);
   const publicKey = await crypto.subtle.importKey(
@@ -51,7 +51,7 @@ export async function exportPublicKey(key: CryptoKey): Promise<Uint8Array> {
 }
 
 export async function importPublicKey(raw: Uint8Array): Promise<CryptoKey> {
-  return crypto.subtle.importKey('raw', raw, ECDH_PARAMS, true, []);
+  return crypto.subtle.importKey('raw', raw as BufferSource, ECDH_PARAMS, true, []);
 }
 
 async function ecdhDeriveAesKey(privateKey: CryptoKey, publicKey: CryptoKey): Promise<CryptoKey> {
@@ -89,6 +89,6 @@ export async function decryptAsRecipient(fragment: string, recipientSecret: Uint
   const recipientKp = await deriveKeyPairFromSecret(recipientSecret);
   const ephPub = await importPublicKey(ephPubRaw);
   const aesKey = await ecdhDeriveAesKey(recipientKp.privateKey, ephPub);
-  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ciphertext);
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, aesKey, ciphertext as BufferSource);
   return new TextDecoder().decode(plaintext);
 }

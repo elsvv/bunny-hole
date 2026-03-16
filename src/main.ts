@@ -41,13 +41,13 @@ function renderCompose(): void {
   const contacts = getContacts();
 
   app().innerHTML = `
-    <textarea id="msg" placeholder="Your message" maxlength="${MAX_MESSAGE_BYTES}"></textarea>
+    <textarea id="msg" placeholder="Your message"></textarea>
     <div class="row"><small id="charcount">0 / ${MAX_MESSAGE_BYTES}</small></div>
     <hr>
     <b>Send via</b>
     <div class="row">
       <label><input type="radio" name="mode" value="password" checked> Password</label>
-      <label><input type="radio" name="mode" value="passkey" ${hasPasskey ? '' : 'disabled'}> Passkey${hasPasskey ? '' : ' (register first)'}</label>
+      <label><input type="radio" name="mode" value="passkey" ${contacts.length > 0 ? '' : 'disabled'}> Passkey${contacts.length > 0 ? '' : ' (add contacts first)'}</label>
     </div>
     <div id="mode-fields"></div>
     <button id="encrypt-btn">Encrypt</button>
@@ -163,12 +163,15 @@ function showResult(html: string): void {
 function renderKeysSection(hasPasskey: boolean): void {
   const section = $('#keys-section');
   if (!hasPasskey) {
-    section.innerHTML = '<button id="register-btn">Register passkey</button>';
+    section.innerHTML = '<button id="register-btn">Register passkey</button><p><small>Register to receive passkey-encrypted messages. Not needed for sending.</small></p>';
     $('#register-btn').addEventListener('click', handleRegister);
   } else {
     section.innerHTML = `
       <p>Passkey registered.</p>
-      <button id="show-pubkey-btn">Show my public key</button>
+      <div class="row">
+        <input type="text" id="my-label" placeholder="Your name / label" value="Anonymous">
+        <button id="show-pubkey-btn">Show my public key</button>
+      </div>
       <div id="pubkey-display" class="hidden"></div>
     `;
     $('#show-pubkey-btn').addEventListener('click', handleShowPubkey);
@@ -197,8 +200,7 @@ async function handleShowPubkey(): Promise<void> {
     const pubRaw = await exportPublicKey(kp.publicKey);
     const pubB64 = toBase64url(pubRaw);
 
-    // Prompt for label
-    const label = prompt('Your name/label for this key:') || 'Anonymous';
+    const label = (document.getElementById('my-label') as HTMLInputElement)?.value.trim() || 'Anonymous';
 
     // Create share URL (mode 0x03)
     const shareFragment = encodePayload(0x03, pubRaw, new TextEncoder().encode(label));

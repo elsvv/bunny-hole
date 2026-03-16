@@ -7,7 +7,9 @@ export type View =
   | { kind: 'compose' }
   | { kind: 'decrypt-password'; fragment: string }
   | { kind: 'decrypt-passkey'; fragment: string }
-  | { kind: 'add-contact'; pubkey: string; label: string };
+  | { kind: 'add-contact'; pubkey: string; label: string }
+  | { kind: 'decrypt-chunk-password'; fragment: string }
+  | { kind: 'decrypt-chunk-passkey'; fragment: string };
 
 export function resolveView(): View {
   const hash = location.hash.slice(1);
@@ -20,6 +22,10 @@ export function resolveView(): View {
         return { kind: 'decrypt-password', fragment: hash };
       case 0x02:
         return { kind: 'decrypt-passkey', fragment: hash };
+      case 0x04:
+        return { kind: 'decrypt-chunk-password', fragment: hash };
+      case 0x05:
+        return { kind: 'decrypt-chunk-passkey', fragment: hash };
       case 0x03: {
         const pubkeyBytes = parts[0];
         const label = new TextDecoder().decode(parts[1]);

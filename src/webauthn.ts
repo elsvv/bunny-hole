@@ -36,7 +36,7 @@ export async function registerPasskey(): Promise<PasskeyRegistration> {
       ],
       authenticatorSelection: {
         residentKey: 'preferred',
-        userVerification: 'preferred',
+        userVerification: 'required',
       },
       extensions: { prf: {} } as any,
     },
@@ -66,7 +66,7 @@ export async function getPrfSecret(credentialId: string): Promise<Uint8Array> {
       challenge,
       rpId: getRpId(),
       allowCredentials: [{ type: 'public-key', id: rawId.buffer }],
-      userVerification: 'preferred',
+      userVerification: 'required',
       extensions: {
         prf: { eval: { first: PRF_SALT } },
       } as any,
@@ -75,8 +75,8 @@ export async function getPrfSecret(credentialId: string): Promise<Uint8Array> {
 
   const extResults = assertion.getClientExtensionResults() as any;
   const prfResult = extResults.prf?.results?.first;
-  if (!prfResult) {
-    throw new Error('PRF extension not available or not supported by this authenticator');
+  if (!prfResult || !(prfResult instanceof ArrayBuffer) || prfResult.byteLength !== 32) {
+    throw new Error('PRF extension not available or returned unexpected output');
   }
   return new Uint8Array(prfResult);
 }

@@ -10,7 +10,7 @@
     "build": "bash build.sh",
     "dev": "npx esbuild src/main.ts --bundle --outfile=dist/app.js --target=es2022 --watch --servedir=.",
     "check": "npx tsc --noEmit",
-    "test": "node --test --experimental-strip-types tests/*.test.ts"
+    "test": "bash -c 'mkdir -p dist/tests && for f in tests/*.test.ts; do npx esbuild \"$f\" --bundle --outfile=\"dist/tests/$(basename \"$f\" .ts).js\" --platform=node --format=esm --packages=external; done && node --test dist/tests/*.test.js'"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,8 @@
 // src/crypto-passkey.ts
 import { encodePayload, decodePayload } from './encoding.ts';
+import { toBase64url } from './encoding.ts';
 import { ECDH_PARAMS, ecdhDeriveAesKey } from './crypto-shared.ts';
+import { p256 } from '@noble/curves/nist.js';
 
 export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<CryptoKeyPair> {
   const hkdfKey = await crypto.subtle.importKey('raw', secret as BufferSource, 'HKDF', false, ['deriveBits']);
@@ -12,74 +14,36 @@ export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<Crypt
     )
   );
 
-  // Try PKCS8 import — Chrome/Firefox accept minimal format,
-  // Safari requires the curve OID in ECPrivateKey [0] parameters.
-  // Try with parameters first (Safari-compatible), fall back to minimal.
-  let privateKey: CryptoKey;
-  try {
-    const pkcs8 = buildP256Pkcs8WithParams(derived);
-    privateKey = await crypto.subtle.importKey('pkcs8', pkcs8 as BufferSource, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
-  } catch {
-    const pkcs8 = buildP256Pkcs8Minimal(derived);
-    privateKey = await crypto.subtle.importKey('pkcs8', pkcs8 as BufferSource, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
-  }
+  // Compute public point from private scalar using @noble/curves (works everywhere)
+  const publicKeyUncompressed = p256.getPublicKey(derived, false); // 65 bytes: 04 || X || Y
+  const x = publicKeyUncompressed.slice(1, 33);
+  const y = publicKeyUncompressed.slice(33, 65);
 
-  const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+  // Import via JWK — works in ALL browsers including Safari
+  const privateKey = await crypto.subtle.importKey(
+    'jwk',
+    {
+      kty: 'EC',
+      crv: 'P-256',
+      x: toBase64url(x),
+      y: toBase64url(y),
+      d: toBase64url(derived),
+      ext: true,
+    },
+    ECDH_PARAMS,
+    true,
+    ['deriveBits']
+  );
+
   const publicKey = await crypto.subtle.importKey(
     'jwk',
-    { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y },
+    { kty: 'EC', crv: 'P-256', x: toBase64url(x), y: toBase64url(y) },
     ECDH_PARAMS,
     true,
     []
   );
 
   return { privateKey, publicKey };
-}
-
-// PKCS8 with ECPrivateKey [0] parameters — required by Safari
-function buildP256Pkcs8WithParams(privateKeyBytes: Uint8Array): Uint8Array {
-  // SEQUENCE { version 0, AlgorithmIdentifier { ecPublicKey, P-256 },
-  //   OCTET STRING { SEQUENCE { version 1, OCTET STRING(32 bytes),
-  //     [0] { OID P-256 } } } }
-  const prefix = new Uint8Array([
-    0x30, 0x4d,                                           // SEQUENCE (77 bytes)
-    0x02, 0x01, 0x00,                                     // INTEGER 0 (version)
-    0x30, 0x13,                                           // SEQUENCE (19 bytes)
-    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID ecPublicKey
-    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID P-256
-    0x04, 0x33,                                           // OCTET STRING (51 bytes)
-    0x30, 0x31,                                           // SEQUENCE (49 bytes)
-    0x02, 0x01, 0x01,                                     // INTEGER 1 (version)
-    0x04, 0x20,                                           // OCTET STRING (32 bytes)
-  ]);
-  const suffix = new Uint8Array([
-    0xa0, 0x0a,                                           // [0] (10 bytes)
-    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID P-256
-  ]);
-  const result = new Uint8Array(prefix.length + 32 + suffix.length);
-  result.set(prefix);
-  result.set(privateKeyBytes, prefix.length);
-  result.set(suffix, prefix.length + 32);
-  return result;
-}
-
-// Minimal PKCS8 without optional fields — works in Chrome/Firefox
-function buildP256Pkcs8Minimal(privateKeyBytes: Uint8Array): Uint8Array {
-  const prefix = new Uint8Array([
-    0x30, 0x41,
-    0x02, 0x01, 0x00,
-    0x30, 0x13,
-    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
-    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07,
-    0x04, 0x27,
-    0x30, 0x25,
-    0x02, 0x01, 0x01,
-    0x04, 0x20,
-  ]);
-  const result = new Uint8Array(prefix.length + 32);
-  result.set(prefix);
-  result.set(privateKeyBytes, prefix.length);
-  return result;
 }
 
 export async function exportPublicKey(key: CryptoKey): Promise<Uint8Array> {

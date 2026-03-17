@@ -12,8 +12,17 @@ export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<Crypt
     )
   );
 
-  const pkcs8 = buildP256Pkcs8(derived);
-  const privateKey = await crypto.subtle.importKey('pkcs8', pkcs8 as BufferSource, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
+  // Try PKCS8 import — Chrome/Firefox accept minimal format,
+  // Safari requires the curve OID in ECPrivateKey [0] parameters.
+  // Try with parameters first (Safari-compatible), fall back to minimal.
+  let privateKey: CryptoKey;
+  try {
+    const pkcs8 = buildP256Pkcs8WithParams(derived);
+    privateKey = await crypto.subtle.importKey('pkcs8', pkcs8 as BufferSource, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
+  } catch {
+    const pkcs8 = buildP256Pkcs8Minimal(derived);
+    privateKey = await crypto.subtle.importKey('pkcs8', pkcs8 as BufferSource, ECDH_PARAMS, true, ['deriveKey', 'deriveBits']);
+  }
 
   const jwk = await crypto.subtle.exportKey('jwk', privateKey);
   const publicKey = await crypto.subtle.importKey(
@@ -27,7 +36,35 @@ export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<Crypt
   return { privateKey, publicKey };
 }
 
-function buildP256Pkcs8(privateKeyBytes: Uint8Array): Uint8Array {
+// PKCS8 with ECPrivateKey [0] parameters — required by Safari
+function buildP256Pkcs8WithParams(privateKeyBytes: Uint8Array): Uint8Array {
+  // SEQUENCE { version 0, AlgorithmIdentifier { ecPublicKey, P-256 },
+  //   OCTET STRING { SEQUENCE { version 1, OCTET STRING(32 bytes),
+  //     [0] { OID P-256 } } } }
+  const prefix = new Uint8Array([
+    0x30, 0x4d,                                           // SEQUENCE (77 bytes)
+    0x02, 0x01, 0x00,                                     // INTEGER 0 (version)
+    0x30, 0x13,                                           // SEQUENCE (19 bytes)
+    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID ecPublicKey
+    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID P-256
+    0x04, 0x33,                                           // OCTET STRING (51 bytes)
+    0x30, 0x31,                                           // SEQUENCE (49 bytes)
+    0x02, 0x01, 0x01,                                     // INTEGER 1 (version)
+    0x04, 0x20,                                           // OCTET STRING (32 bytes)
+  ]);
+  const suffix = new Uint8Array([
+    0xa0, 0x0a,                                           // [0] (10 bytes)
+    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID P-256
+  ]);
+  const result = new Uint8Array(prefix.length + 32 + suffix.length);
+  result.set(prefix);
+  result.set(privateKeyBytes, prefix.length);
+  result.set(suffix, prefix.length + 32);
+  return result;
+}
+
+// Minimal PKCS8 without optional fields — works in Chrome/Firefox
+function buildP256Pkcs8Minimal(privateKeyBytes: Uint8Array): Uint8Array {
   const prefix = new Uint8Array([
     0x30, 0x41,
     0x02, 0x01, 0x00,

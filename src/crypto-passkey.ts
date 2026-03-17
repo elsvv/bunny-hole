@@ -2,7 +2,7 @@
 import { encodePayload, decodePayload } from './encoding.ts';
 import { toBase64url } from './encoding.ts';
 import { ECDH_PARAMS, ecdhDeriveAesKey } from './crypto-shared.ts';
-import { p256 } from '@noble/curves/nist.js';
+import { getP256PublicKey } from './p256.ts';
 
 export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<CryptoKeyPair> {
   const hkdfKey = await crypto.subtle.importKey('raw', secret as BufferSource, 'HKDF', false, ['deriveBits']);
@@ -14,8 +14,8 @@ export async function deriveKeyPairFromSecret(secret: Uint8Array): Promise<Crypt
     )
   );
 
-  // Compute public point from private scalar using @noble/curves (works everywhere)
-  const publicKeyUncompressed = p256.getPublicKey(derived, false); // 65 bytes: 04 || X || Y
+  // Compute public point from private scalar (P-256 point multiplication)
+  const publicKeyUncompressed = getP256PublicKey(derived); // 65 bytes: 04 || X || Y
   const x = publicKeyUncompressed.slice(1, 33);
   const y = publicKeyUncompressed.slice(33, 65);
 

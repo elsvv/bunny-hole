@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "bash build.sh",
-    "dev": "npx esbuild src/main.ts --bundle --outfile=dist/app.js --target=es2022 --watch --servedir=.",
+    "dev": "npx esbuild src/main.ts --bundle --splitting --format=esm --outdir=dist --target=es2022 --watch --servedir=dist",
     "check": "npx tsc --noEmit",
     "test": "bash -c 'mkdir -p dist/tests && for f in tests/*.test.ts; do npx esbuild \"$f\" --bundle --outfile=\"dist/tests/$(basename \"$f\" .ts).js\" --platform=node --format=esm --external:node:test --external:node:assert; done && node --test dist/tests/*.test.js'"
   },

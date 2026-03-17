@@ -1,20 +1,18 @@
 #!/bin/bash
 set -e
 
-mkdir -p dist
+rm -rf dist && mkdir -p dist
 
-# Build JS bundle
-npx esbuild src/main.ts --bundle --minify --outfile=dist/app.js --target=es2022
+# Build with code splitting — QR loaded lazily
+npx esbuild src/main.ts --bundle --minify --splitting --format=esm --outdir=dist --target=es2022
 
-# Create single-file version with inlined JS
-node -e "
-const fs = require('fs');
-const html = fs.readFileSync('index.html', 'utf8');
-const js = fs.readFileSync('dist/app.js', 'utf8');
-const out = html.replace('<script src=\"dist/app.js\"></script>', '<script>' + js + '</script>');
-fs.writeFileSync('dist/index.html', out);
-"
+# Copy HTML with module script tag
+cp index.html dist/index.html
 
 echo "Build complete:"
-echo "  dist/app.js     $(wc -c < dist/app.js | tr -d ' ') bytes"
-echo "  dist/index.html $(wc -c < dist/index.html | tr -d ' ') bytes"
+for f in dist/*.js; do
+  echo "  $(basename $f)  $(wc -c < "$f" | tr -d ' ') bytes"
+done
+echo "  index.html  $(wc -c < dist/index.html | tr -d ' ') bytes"
+echo "  total JS:   $(cat dist/*.js | wc -c | tr -d ' ') bytes"
+echo "  gzipped:    $(cat dist/*.js | gzip -c | wc -c | tr -d ' ') bytes"

@@ -6,7 +6,7 @@ import { encryptForRecipient, decryptAsRecipient, deriveKeyPairFromSecret, expor
 import { registerPasskey, getPrfSecret } from './webauthn.ts';
 import { getContacts, addContact, removeContact, renameContact } from './contacts.ts';
 import { toBase64url, fromBase64url, encodePayload } from './encoding.ts';
-import { renderQR } from './qr.ts';
+// QR loaded lazily — only needed for public key sharing
 import { encryptChunksPassword, encryptChunksPasskey, decryptChunkPassword, decryptChunkPasskey, CHUNK_DATA_SIZE } from './crypto-chunked.ts';
 import { shouldCompress, compressImage, fileToUint8Array, type ImageQuality } from './compress.ts';
 import { saveChunk, getProgress, isComplete, assembleFile, clearGroup, cleanOldChunks } from './chunk-store.ts';
@@ -375,6 +375,7 @@ async function handleShowPubkey(): Promise<void> {
     // Render QR code for share URL
     try {
       const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
+      const { renderQR } = await import('./qr.ts');
       renderQR(canvas, shareUrl);
     } catch {
       // QR may fail for very long URLs, that's ok
